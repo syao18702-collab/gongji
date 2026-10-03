@@ -61,3 +61,20 @@ button,input,select{font:inherit}button{border:0;cursor:pointer}a{color:inherit}
 .review-answer{font-size:13px;line-height:1.7;background:color-mix(in srgb,var(--line) 55%,var(--card));padding:11px 13px;border-radius:12px}
 .metric-sub{font-size:11px;color:var(--muted);margin-top:5px}
 @media(max-width:520px){.grid3{grid-template-columns:1fr 1fr 1fr}.random-card{padding:13px;min-height:90px}.search-row{align-items:stretch}.search-row .btn{padding:10px 13px}}
+
+
+/* V1.2 交互优化 */
+.metric-clickable{
+  width:100%;
+  text-align:left;
+  color:var(--text);
+  cursor:pointer;
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.metric-clickable:active{transform:scale(.985)}
+.metric-clickable:hover{border-color:color-mix(in srgb,var(--primary) 30%,var(--line))}
+.list-open{
+  display:block;width:100%;background:transparent;border:0;padding:0;
+  color:var(--text);text-align:left;cursor:pointer;
+}
+.swipe-zone{touch-action:pan-y}

@@ -11,7 +11,8 @@
     daily:'gbweb_daily_v11',
     mock:'gbweb_mock_v11',
     theme:'gbweb_theme_v11',
-    progress:'gbweb_progress_v11'
+    progress:'gbweb_progress_v11',
+    modeProgress:'gbweb_mode_progress_v12'
   };
 
   const $=(s,r=document)=>r.querySelector(s);
@@ -64,7 +65,7 @@
   function shell(content,active){
     APP.innerHTML=`<main class="app-shell">
       <div class="topbar">
-        <div class="brand"><img src="assets/icon.svg"><div><strong>公基刷题</strong><div class="small muted">700题 · V1.1增强版</div></div></div>
+        <div class="brand"><img src="assets/icon.svg"><div><strong>公基刷题</strong><div class="small muted">700题 · V1.3优化版</div></div></div>
         <div class="top-actions">
           <button class="btn light mini" id="installBtn" style="${deferredInstallPrompt?'':'display:none'}">安装</button>
           <button class="btn light mini" id="themeBtn">${document.body.classList.contains('dark')?'浅色':'深色'}</button>
@@ -98,7 +99,10 @@
     else if(name==='mock')renderMock();
     else if(name==='exam')renderExam(args);
     else if(name==='review')renderReview();
+    else if(name==='answered')renderList('answered');
   }
+  window.route=route;
+  window.goMock=()=>route('mock');
 
   const metric=(n,l,sub='')=>`<div class="metric"><div class="n">${n}</div><div class="metric-label">${l}</div>${sub?`<div class="metric-sub">${sub}</div>`:''}</div>`;
   const bankLine=(a,b)=>`<div class="bank-line"><span>${a}</span><span>${b}</span></div>`;
@@ -107,6 +111,53 @@
 
   function progressInfo(){
     return get(K.progress,null);
+  }
+
+  function modeProgressMap(){
+    return get(K.modeProgress,{});
+  }
+
+  function getModeProgress(mode){
+    return modeProgressMap()[mode] || null;
+  }
+
+  function saveModeProgress(title,mode,list,index){
+    if(!mode || mode==='search' || !list?.length)return;
+    const map=modeProgressMap();
+    map[mode]={
+      title,
+      mode,
+      questionId:list[index]?.id,
+      index,
+      total:list.length,
+      savedAt:Date.now()
+    };
+    set(K.modeProgress,map);
+  }
+
+  function savedIndexFor(mode,list){
+    const p=getModeProgress(mode);
+    if(!p || !list?.length)return 0;
+    let idx=list.findIndex(q=>Number(q.id)===Number(p.questionId));
+    if(idx<0)idx=Math.min(Number(p.index)||0,Math.max(0,list.length-1));
+    return Math.max(0,idx);
+  }
+
+  function bindSwipe(target,onLeft,onRight){
+    if(!target)return;
+    let sx=0,sy=0,active=false;
+    target.addEventListener('touchstart',e=>{
+      if(!e.touches || e.touches.length!==1)return;
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY; active=true;
+    },{passive:true});
+    target.addEventListener('touchend',e=>{
+      if(!active || !e.changedTouches || !e.changedTouches.length)return;
+      active=false;
+      const dx=e.changedTouches[0].clientX-sx;
+      const dy=e.changedTouches[0].clientY-sy;
+      if(Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)*1.25)return;
+      if(dx<0)onLeft(); else onRight();
+    },{passive:true});
   }
 
   function saveProgress(title,mode,list,index){
@@ -119,6 +170,7 @@
       total:list.length,
       savedAt:Date.now()
     });
+    saveModeProgress(title,mode,list,index);
   }
 
   function resumeProgress(){
@@ -127,6 +179,8 @@
     let list=Q;
     if(p.mode==='core')list=Q.filter(q=>q.priority==='A核心');
     else if(p.mode==='high')list=Q.filter(q=>q.priority==='B高频');
+    else if(p.mode==='expand')list=Q.filter(q=>q.priority==='B扩展');
+    else if(p.mode==='supplement')list=Q.filter(q=>q.priority==='C补充');
     else if(p.mode==='unanswered'){
       const st=stats();list=Q.filter(q=>!st[String(q.id)]);
     } else if(p.mode?.startsWith('group:')){
@@ -178,8 +232,10 @@
       <div class="grid2">
         ${entry('A','A核心必刷','223题 · 主干知识','blue',"startMode('core')")}
         ${entry('B','B高频强化','157题 · 高频辨析','orange',"startMode('high')")}
+        ${entry('扩','B扩展训练','119题 · 延伸巩固','purple',"startMode('expand')")}
+        ${entry('补','C补充训练','201题 · 查漏补缺','green',"startMode('supplement')")}
         ${entry('未','未做题专项',`${unanswered}题待完成`,'purple',"startMode('unanswered')")}
-        ${entry('模','模拟考试','自定题量与时长','green',"route('mock')")}
+        ${entry('模','模拟考试','自定题量与时长','green',"goMock()")}
       </div>
 
       <div class="section-title">核心掌握</div>
@@ -191,10 +247,16 @@
 
       <div class="section-title">我的学习</div>
       <div class="grid2">
-        ${metric(ks.length,'已做题目')}
+        <button class="metric metric-clickable" onclick="route('answered')">
+          <div class="n">${ks.length}</div><div class="metric-label">已做题目</div>
+        </button>
         ${metric(attempts?Math.round(correct/attempts*100)+'%':'0%','累计正确率')}
-        <div onclick="route('wrong')">${metric(ids(K.wrong).length,'错题本')}</div>
-        <div onclick="route('favorite')">${metric(ids(K.fav).length,'收藏题目')}</div>
+        <button class="metric metric-clickable" onclick="route('wrong')">
+          <div class="n">${ids(K.wrong).length}</div><div class="metric-label">错题本</div>
+        </button>
+        <button class="metric metric-clickable" onclick="route('favorite')">
+          <div class="n">${ids(K.fav).length}</div><div class="metric-label">收藏题目</div>
+        </button>
       </div>
 
       <div class="section-title">题库结构</div>
@@ -204,20 +266,34 @@
     $('#examDateHome').onchange=e=>{const n=settings();n.examDate=e.target.value;set(K.settings,n);renderHome()};
   }
 
+  function openQuestionMode(list,mode,title,useSaved=true){
+    if(!list?.length){route('question',{list:[],mode,title});return}
+    const index=useSaved?savedIndexFor(mode,list):0;
+    qstate={list,index,mode,title,session:{}};
+    route('question',{resume:true});
+    if(useSaved && index>0)toast(`已续接到第 ${index+1} 题`);
+  }
+
   window.startMode=mode=>{
-    let list=Q,title='完整700题',internalMode=mode;
+    let list=Q,title='完整700题',internalMode=mode,useSaved=true;
     if(mode==='core'){list=Q.filter(q=>q.priority==='A核心');title='A核心223'}
     else if(mode==='high'){list=Q.filter(q=>q.priority==='B高频');title='B高频157'}
-    else if(mode==='random10'){list=shuffle(Q).slice(0,10);title='随机10题'}
-    else if(mode==='random20'){list=shuffle(Q).slice(0,20);title='随机20题'}
-    else if(mode==='random50'){list=shuffle(Q).slice(0,50);title='随机50题'}
+    else if(mode==='expand'){list=Q.filter(q=>q.priority==='B扩展');title='B扩展119'}
+    else if(mode==='supplement'){list=Q.filter(q=>q.priority==='C补充');title='C补充201'}
+    else if(mode==='random10'){list=shuffle(Q).slice(0,10);title='随机10题';useSaved=false}
+    else if(mode==='random20'){list=shuffle(Q).slice(0,20);title='随机20题';useSaved=false}
+    else if(mode==='random50'){list=shuffle(Q).slice(0,50);title='随机50题';useSaved=false}
     else if(mode==='unanswered'){const st=stats();list=Q.filter(q=>!st[String(q.id)]);title='未做题专项'}
     else if(mode==='wrong'){list=ids(K.wrong).map(byId).filter(Boolean);title='错题本'}
     else if(mode==='favorite'){list=ids(K.fav).map(byId).filter(Boolean);title='收藏夹'}
-    route('question',{list,mode:internalMode,title});
+    else if(mode==='answered'){const st=stats();list=Q.filter(q=>st[String(q.id)]);title='已做题目'}
+    openQuestionMode(list,internalMode,title,useSaved);
   };
 
-  window.startGroup=g=>route('question',{list:Q.filter(q=>q.group===g),mode:'group:'+g,title:g+'专项'});
+  window.startGroup=g=>{
+    const mode='group:'+g, list=Q.filter(q=>q.group===g);
+    openQuestionMode(list,mode,g+'专项',true);
+  };
 
   function renderPractice(){
     const groups={};Q.forEach(q=>groups[q.group]=(groups[q.group]||0)+1);
@@ -236,6 +312,8 @@
         ${menu('完整700题','全量知识覆盖',"startMode('all')")}
         ${menu('A核心223','优先掌握，建议反复刷',"startMode('core')")}
         ${menu('B高频157','高频易混辨析训练',"startMode('high')")}
+        ${menu('B扩展119','扩展知识与延伸巩固',"startMode('expand')")}
+        ${menu('C补充201','补充覆盖与查漏补缺',"startMode('supplement')")}
         ${menu('未做题专项',`${unanswered}题尚未作答`,"startMode('unanswered')")}
       </section>
 
@@ -269,7 +347,7 @@
 
   let qstate=null;
   function renderQuestion(args={}){
-    if(args.list)qstate={list:args.list,index:0,mode:args.mode,title:args.title,session:{}};
+    if(args.list)qstate={list:args.list,index:savedIndexFor(args.mode,args.list),mode:args.mode,title:args.title,session:{}};
     if(!qstate||!qstate.list.length){shell('<div class="card">暂无题目</div>','practice');return}
 
     const raw=qstate.list[qstate.index],q=displayQ(raw),ss=qstate.session[q.id]||{selected:[],submitted:false,isCorrect:false};
@@ -287,7 +365,7 @@
         <div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       </section>
 
-      <section class="card">
+      <section class="card swipe-zone">
         <div class="badges"><span class="badge">${q.group}</span><span class="badge gray">${q.module}</span><span class="badge orange">${typeName(q)}</span><span class="badge green">${q.priority}</span></div>
         <div class="question">${esc(q.question)}</div>
         ${q.options.map(o=>{let c='option';if(selected.has(o.key))c+=' selected';if(ss.submitted&&correct.includes(o.key))c+=' correct';else if(ss.submitted&&selected.has(o.key)&&!correct.includes(o.key))c+=' wrong';return `<button class="${c}" data-key="${o.key}"><span class="key">${o.key}</span><span class="text">${esc(o.text)}</span></button>`}).join('')}
@@ -319,9 +397,12 @@
       ss.selected=a;ss.submitted=true;ss.isCorrect=ok;qstate.session[q.id]=ss;record(q.id,ok);renderQuestion({});
     };
 
-    $('#prevQ').onclick=()=>{if(qstate.index>0){qstate.index--;renderQuestion({})}};
-    $('#nextQ').onclick=()=>{if(qstate.index+1<qstate.list.length){qstate.index++;renderQuestion({})}else toast(`本组已答 ${answered}/${qstate.list.length} 题`)};
+    const goPrev=()=>{if(qstate.index>0){qstate.index--;renderQuestion({})}};
+    const goNext=()=>{if(qstate.index+1<qstate.list.length){qstate.index++;renderQuestion({})}else toast(`本组已答 ${answered}/${qstate.list.length} 题`)};
+    $('#prevQ').onclick=goPrev;
+    $('#nextQ').onclick=goNext;
     $('#cardQ').onclick=()=>openCard(false);
+    bindSwipe($('.swipe-zone'),goNext,goPrev);
     $('#favQ').onclick=()=>{toggleId(K.fav,q.id);renderQuestion({})};
     if($('#masterQ'))$('#masterQ').onclick=()=>{set(K.wrong,ids(K.wrong).filter(x=>x!==Number(q.id)));toast('已移出错题本')};
   }
@@ -344,22 +425,40 @@
   }
 
   function renderList(type){
-    const key=type==='wrong'?K.wrong:K.fav,arr=ids(key).map(byId).filter(Boolean);
+    let arr=[],title='',mode=type;
+    if(type==='wrong'){arr=ids(K.wrong).map(byId).filter(Boolean);title='错题本'}
+    else if(type==='favorite'){arr=ids(K.fav).map(byId).filter(Boolean);title='收藏夹'}
+    else if(type==='answered'){
+      const st=stats();
+      arr=Q.filter(q=>st[String(q.id)]);
+      title='已做题目';
+    }
     const wrongGroups={};
     if(type==='wrong')arr.forEach(q=>wrongGroups[q.group]=(wrongGroups[q.group]||0)+1);
 
     shell(`
       <section class="card hero">
-        <div class="title">${type==='wrong'?'错题本':'收藏夹'}</div>
+        <div class="title">${title}</div>
         <div class="sub">${arr.length}题</div>
         ${arr.length?`<button class="btn" style="margin-top:14px" id="startList">开始复习</button>`:''}
       </section>
       ${type==='wrong'&&arr.length?`<section class="card"><div class="small muted">错题模块分布</div><div class="wrong-tags">${Object.entries(wrongGroups).sort((a,b)=>b[1]-a[1]).map(([g,n])=>`<span>${g} ${n}</span>`).join('')}</div></section>`:''}
-      ${arr.length?arr.map(q=>`<section class="card"><div><span class="badge">${q.group}</span><span class="badge orange">${typeName(q)}</span><button class="remove" data-id="${q.id}">${type==='wrong'?'移除':'取消收藏'}</button></div><div class="list-q">${esc(q.question)}</div></section>`).join(''):'<div class="card muted">当前没有题目。</div>'}
+      ${arr.length?arr.map(q=>`<section class="card">
+        <div>
+          <span class="badge">${q.group}</span><span class="badge orange">${typeName(q)}</span>
+          ${type==='wrong'?`<button class="remove" data-id="${q.id}">移除</button>`:type==='favorite'?`<button class="remove" data-id="${q.id}">取消收藏</button>`:''}
+        </div>
+        <button class="list-q list-open" data-id="${q.id}">${esc(q.question)}</button>
+      </section>`).join(''):'<div class="card muted">当前没有题目。</div>'}
     `,'practice');
 
-    if($('#startList'))$('#startList').onclick=()=>route('question',{list:arr,mode:type,title:type==='wrong'?'错题本':'收藏夹'});
-    $$('.remove').forEach(b=>b.onclick=()=>{if(type==='wrong')set(K.wrong,ids(K.wrong).filter(x=>x!==Number(b.dataset.id)));else toggleId(K.fav,b.dataset.id);renderList(type)});
+    if($('#startList'))$('#startList').onclick=()=>openQuestionMode(arr,mode,title,true);
+    $$('.list-open').forEach(b=>b.onclick=()=>openQuestionMode([byId(b.dataset.id)].filter(Boolean),'search','单题复习',false));
+    $$('.remove').forEach(b=>b.onclick=()=>{
+      if(type==='wrong')set(K.wrong,ids(K.wrong).filter(x=>x!==Number(b.dataset.id)));
+      else if(type==='favorite')toggleId(K.fav,b.dataset.id);
+      renderList(type);
+    });
   }
 
   function renderMock(){
@@ -431,7 +530,7 @@
         </div>
         <div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       </section>
-      <section class="card">
+      <section class="card swipe-zone">
         <div class="badges"><span class="badge">${q.group}</span><span class="badge orange">${typeName(q)}</span></div>
         <div class="question">${esc(q.question)}</div>
         ${q.options.map(o=>`<button class="option ${selected.has(o.key)?'selected':''}" data-key="${o.key}"><span class="key">${o.key}</span><span class="text">${esc(o.text)}</span></button>`).join('')}
@@ -447,9 +546,12 @@
       examState.answers[q.id]=[...selected];
       renderExam({resume:true});
     });
-    $('#prevE').onclick=()=>{if(examState.index>0){examState.index--;renderExam({resume:true})}};
-    $('#nextE').onclick=()=>{if(examState.index+1<examState.list.length){examState.index++;renderExam({resume:true})}else submitExam(false)};
+    const examPrev=()=>{if(examState.index>0){examState.index--;renderExam({resume:true})}};
+    const examNext=()=>{if(examState.index+1<examState.list.length){examState.index++;renderExam({resume:true})}else submitExam(false)};
+    $('#prevE').onclick=examPrev;
+    $('#nextE').onclick=examNext;
     $('#cardE').onclick=()=>openCard(true);
+    bindSwipe($('.swipe-zone'),examNext,examPrev);
     $('#submitE').onclick=()=>submitExam(false);
     updateTimer();
   }
@@ -548,7 +650,7 @@
   }
 
   window.exportBackup=()=>{
-    const obj={version:1,settings:settings(),stats:stats(),wrong:ids(K.wrong),favorite:ids(K.fav),daily:get(K.daily,{}),mock:get(K.mock,[]),progress:get(K.progress,null)};
+    const obj={version:1,settings:settings(),stats:stats(),wrong:ids(K.wrong),favorite:ids(K.fav),daily:get(K.daily,{}),mock:get(K.mock,[]),progress:get(K.progress,null),modeProgress:get(K.modeProgress,{})};
     const b=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');
     a.href=u;a.download='公基刷题学习数据备份.json';a.click();URL.revokeObjectURL(u);
   };
@@ -561,7 +663,7 @@
       r.onload=()=>{
         try{
           const o=JSON.parse(r.result);
-          if(o.settings)set(K.settings,o.settings);if(o.stats)set(K.stats,o.stats);if(o.wrong)set(K.wrong,o.wrong);if(o.favorite)set(K.fav,o.favorite);if(o.daily)set(K.daily,o.daily);if(o.mock)set(K.mock,o.mock);if(o.progress)set(K.progress,o.progress);
+          if(o.settings)set(K.settings,o.settings);if(o.stats)set(K.stats,o.stats);if(o.wrong)set(K.wrong,o.wrong);if(o.favorite)set(K.fav,o.favorite);if(o.daily)set(K.daily,o.daily);if(o.mock)set(K.mock,o.mock);if(o.progress)set(K.progress,o.progress);if(o.modeProgress)set(K.modeProgress,o.modeProgress);
           toast('导入成功');renderSettings();
         }catch{alert('备份文件格式无效')}
       };
@@ -572,7 +674,7 @@
 
   window.resetAll=()=>{
     if(confirm('确定清空全部学习记录吗？')){
-      [K.stats,K.wrong,K.fav,K.daily,K.mock,K.progress].forEach(k=>localStorage.removeItem(k));
+      [K.stats,K.wrong,K.fav,K.daily,K.mock,K.progress,K.modeProgress].forEach(k=>localStorage.removeItem(k));
       toast('已清空');renderSettings();
     }
   };
