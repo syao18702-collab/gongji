@@ -1,0 +1,75 @@
+公基刷题网页版 V1.1 —— GitHub + Vercel 自动部署指南
+
+一、目标
+把当前源码放到 GitHub，然后让 Vercel 与 GitHub 仓库连接。
+以后每次更新 GitHub，Vercel 会自动重新部署，不再需要手动拖文件。
+
+二、GitHub 建仓
+1. 打开 https://github.com/
+2. 登录后点击右上角“+” → New repository
+3. Repository name 建议填写：
+   gongji
+4. Public / Private 均可。
+5. 不要勾选“Add a README file”，因为本项目已经有文件。
+6. 点击 Create repository。
+
+三、上传源码
+最简单方式：
+1. 进入刚创建的 gongji 仓库
+2. 点击“uploading an existing file”或 Add file → Upload files
+3. 将本文件夹中的所有文件和文件夹拖进去：
+   - index.html
+   - style.css
+   - app.js
+   - sw.js
+   - manifest.webmanifest
+   - vercel.json
+   - _headers
+   - data/
+   - assets/
+   - README_部署与使用说明.txt
+   - GitHub与Vercel自动部署指南.txt
+4. Commit message 可写：
+   V1.1 功能增强版
+5. 点击 Commit changes。
+
+四、把 Vercel 连接 GitHub
+你当前已有 gongji.vercel.app 项目：
+1. 打开 Vercel 的 gongji 项目
+2. 左侧选择 Settings（若左栏未显示，项目顶部也可进入）
+3. 找到 Git / Git Repository / Connect Git Repository
+4. 点击 Connect Git Repository
+5. 选择 GitHub
+6. 授权 Vercel 访问你的仓库
+7. 选择刚才的 gongji 仓库
+8. Production Branch 选择 main
+9. 保存
+
+如果当前 Vercel 项目不方便连接，也可以：
+1. Vercel → Add New → Project
+2. Import Git Repository → 选择 gongji
+3. Framework Preset：Other
+4. Build Command：留空
+5. Output Directory：留空
+6. Deploy
+之后再把域名 gongji.vercel.app 绑定到新项目即可。
+
+五、以后怎么更新
+以后我给你 V1.2 / V1.3 源码后：
+1. 把修改后的文件上传/提交到 GitHub 的 main 分支
+2. Vercel 会自动检测
+3. 自动生成新 Deployment
+4. gongji.vercel.app 会自动更新到最新版
+
+六、本版 V1.1 新增功能
+- 继续上次刷题
+- 未做题专项
+- 随机10 / 20 / 50题
+- 搜索题干、解析、模块、知识点标签
+- A核心223掌握进度
+- 错题模块分布
+- 模块正确率排行
+- 模块错题数统计
+- 模拟考试错题复盘
+- PWA安装按钮（浏览器支持时显示）
+- 学习备份中加入刷题进度

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#2f66f6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="公基刷题">
+  <title>公基刷题</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <template id="nav-template">
+    <nav class="bottom-nav">
+      <button data-route="home"><span>⌂</span><b>首页</b></button>
+      <button data-route="practice"><span>▣</span><b>刷题</b></button>
+      <button data-route="stats"><span>▥</span><b>统计</b></button>
+      <button data-route="settings"><span>⚙</span><b>设置</b></button>
+    </nav>
+  </template>
+  <script src="data/questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

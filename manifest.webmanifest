@@ -1,0 +1,17 @@
+{
+  "name": "公基刷题",
+  "short_name": "公基刷题",
+  "description": "公共基础知识离线刷题工具 V1.1",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#2f66f6",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
